@@ -2,7 +2,7 @@
 #script ODD/EVEN
 echo "Benvenuto!"
 read -p "Inserisci un numero! non sono accettate lettere o parole: " numero
-if [[ "$numero" =~ ^[0-9]+$ ]]; then
+if [[ "$numero" =~ ^-?[0-9]*\.?[0-9]+$ ]]; then
     echo "Hai inserito un numero!"
 else
     echo "Per favore, inserisci un numero valido."
