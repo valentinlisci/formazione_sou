@@ -1,0 +1,143 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/jammy64"
+
+  ["ping", "pong"].each do |node|
+    config.vm.define node do |vm|
+      ip = node == "ping" ? "192.168.10.10" : "192.168.10.20"
+      vm.vm.hostname = node
+      vm.vm.network "private_network", ip: ip
+
+      vm.vm.provision "shell", inline: <<~SHELL
+        echo "bash /home/vagrant/esercizio/loop.sh"
+        apt-get update -y
+        apt-get install -y docker.io curl
+        usermod -aG docker vagrant
+        mkdir -p /home/vagrant/esercizio
+
+        cat << 'EOF' > /home/vagrant/esercizio/loop.sh
+#!/bin/bash
+
+NOME_CONTENITORE="CONTAINER"
+NOME_IMMAGINE="ealen/echo-server"
+QUESTO_NODO=$(hostname)
+IP_ALTRO_NODO=$([ "$QUESTO_NODO" = "ping" ] && echo "192.168.10.20" || echo "192.168.10.10")
+
+
+read -r -d '' ASCII_PING << 'ASCIIPINGEOF'
+PING 
+
+       ____________
+      /           \\
+     /             \\
+    |               |
+    |     PING      |      >>>>>
+    |               |
+    \\_____________/                         
+          |||||
+          |||||                                                o
+          |||||                                             o
+         /_____\                                         o                                                       
+                                                       o
+                                                    o
+                                                o
+                                              o
+                                          o
+ASCIIPINGEOF
+
+read -r -d '' ASCII_PONG << 'ASCIIPONGEOF'
+PONG            
+                           
+
+   
+     o
+        o
+           o
+              o
+                 o
+                    o
+                    
+                                      ___________
+                                    /           \\
+                                   /             \\
+                                  |               |
+                          <<<<<   |     PONG      |
+                                  |               |
+                                  \\_____________/
+                                        |||||
+                                        |||||
+                                        |||||
+                                       /_____\\
+ASCIIPONGEOF
+
+altro_attivo() {
+  # Controlla se il servizio sull'altro nodo è attivo
+  curl -s "http://$IP_ALTRO_NODO:8080" > /dev/null
+}
+
+# Pong attende che ping sia attivo almeno una volta
+if [ "$QUESTO_NODO" = "pong" ]; then
+  MOSTRATO=0
+  until altro_attivo; do
+    if [ "$MOSTRATO" = 0 ]; then
+      echo "ASPETTO: Attendo che il container sia attivo su ping per iniziare la rotazione."
+      MOSTRATO=1
+    fi
+    sleep 20
+  done
+fi
+
+MOSTRATO_ASCII=0
+
+while true; do
+  # Attende che l'altro nodo spenga il container
+  MOSTRATO=0
+  while altro_attivo; do
+    if [ "$MOSTRATO" = 0 ]; then
+      echo "ASPETTO: Il container e' ancora attivo sull'altro nodo. Attendo che si spenga."
+      MOSTRATO=1
+    fi
+    sleep 3
+  done
+
+  # Mostra ASCII solo una volta
+  if [ "$MOSTRATO_ASCII" = 0 ]; then
+    if [ "$QUESTO_NODO" = "ping" ]; then
+      printf "%s\n" "$ASCII_PING" # Usa printf per stampare l'ASCII art in sicurezza
+    else
+      printf "%s\n" "$ASCII_PONG" # Usa printf per stampare l'ASCII art in sicurezza
+    fi
+    MOSTRATO_ASCII=1
+  fi
+
+  echo "AVVIO IL CONTAINER SU $QUESTO_NODO..."
+  docker rm -f $NOME_CONTENITORE 2>/dev/null || true
+  docker run -d --name $NOME_CONTENITORE -p 8080:80 $NOME_IMMAGINE
+
+  echo "CONTAINER AVVIATO SU $QUESTO_NODO:"
+  docker ps --filter "name=$NOME_CONTENITORE"
+
+  sleep 60
+
+  echo "FERMO IL CONTAINER SU $QUESTO_NODO..."
+  docker stop $NOME_CONTENITORE && docker rm $NOME_CONTENITORE
+
+  echo "IN ATTESA DEL CONTAINER SULL'ALTRO NODO..."
+  MOSTRATO=0
+  while ! altro_attivo; do
+    if [ "$MOSTRATO" = 0 ]; then
+      echo "ASPETTO"
+      MOSTRATO=1
+    fi
+    sleep 20
+  done
+
+  MOSTRATO_ASCII=0
+done
+EOF
+
+        chmod +x /home/vagrant/esercizio/loop.sh
+        chown vagrant:vagrant /home/vagrant/esercizio/loop.sh
+      SHELL
+    end
+  end
+end
