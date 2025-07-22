@@ -1,0 +1,67 @@
+valentinlisci@MacBook-Pro-di-Valentin svolgimento_esercizi % mkdir filees1
+valentinlisci@MacBook-Pro-di-Valentin filees1 % git init
+hint: Using 'master' as the name for the initial branch. This default 
+branch name
+hint: is subject to change. To configure the initial branch name to use in 
+all
+hint: of your new repositories, which will suppress this warning, call:
+hint:
+hint: 	git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this 
+command:
+hint:
+hint: 	git branch -m <name>
+hint:
+hint: Disable this message with "git config set advice.defaultBranchName 
+false"
+Inizializzato repository Git vuoto in 
+/Users/valentinlisci/Desktop/svolgimento_esercizi/filees1/.git/
+valentinlisci@MacBook-Pro-di-Valentin filees1 % echo "linea originale" > 
+file.txt
+valentinlisci@MacBook-Pro-di-Valentin filees1 % git add file.txt 
+valentinlisci@MacBook-Pro-di-Valentin filees1 % git commit -m "commit 
+iniziale con linea originale"
+[master (commit radice) af7fe9e] commit iniziale con linea originale
+ 1 file changed, 1 insertion(+)
+ create mode 100644 file.txt
+valentinlisci@MacBook-Pro-di-Valentin filees1 % git checkout -b ramoA
+Si è passati a un nuovo branch 'ramoA'
+valentinlisci@MacBook-Pro-di-Valentin filees1 % echo "modifica da ramoA" > 
+file.txt 
+valentinlisci@MacBook-Pro-di-Valentin filees1 % git commit -am "modifica 
+su file.txt da ramoA"
+[ramoA cf6b801] modifica su file.txt da ramoA
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+valentinlisci@MacBook-Pro-di-Valentin filees1 % git checkout master
+ùSi è passati al branch 'master'
+valentinlisci@MacBook-Pro-di-Valentin filees1 % git checkout -b ramoB 
+Si è passati a un nuovo branch 'ramoB'
+valentinlisci@MacBook-Pro-di-Valentin filees1 % echo "modifica da ramoB" > 
+file.txt 
+valentinlisci@MacBook-Pro-di-Valentin filees1 % git commit -am "modifica 
+su file.txt da ramoB"
+[ramoB d1be8f6] modifica su file.txt da ramoB
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+valentinlisci@MacBook-Pro-di-Valentin filees1 % git checkout ramoB
+Si è già su 'ramoB'
+valentinlisci@MacBook-Pro-di-Valentin filees1 % git merge ramoA
+Merge automatico di file.txt in corso
+CONFLITTO (contenuto): conflitto di merge in file.txt
+Merge automatico fallito; risolvi i conflitti ed esegui il commit
+del risultato.
+valentinlisci@MacBook-Pro-di-Valentin filees1 % cat file.txt 
+<<<<<<< HEAD
+modifica da ramoB
+=======
+modifica da ramoA
+>>>>>>> ramoA
+valentinlisci@MacBook-Pro-di-Valentin filees1 % nano file.txt 
+valentinlisci@MacBook-Pro-di-Valentin filees1 % git add .
+valentinlisci@MacBook-Pro-di-Valentin filees1 % git commit -m "risoluzione 
+conflitto"
+[ramoB 3a98e37] risoluzione conflitto
+valentinlisci@MacBook-Pro-di-Valentin filees1 % 
+
+

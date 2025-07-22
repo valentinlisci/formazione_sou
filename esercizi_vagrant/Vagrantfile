@@ -1,0 +1,135 @@
+Vagrant.configure("2") do |config|
+  # Configurazione Rocky Linux 9
+  config.vm.define "rocky" do |rocky|
+    rocky.vm.box = "bento/rockylinux-9"
+    rocky.vm.hostname = "rocky"
+    rocky.vm.network "private_network", ip: "192.168.56.10"
+
+    # Disabilita cartella condivisa /vagrant
+    rocky.vm.synced_folder ".", "/vagrant", disabled: true
+
+    rocky.vm.disk :disk, name: "rocky_data", size: "1GB", primary: false
+    
+    rocky.vm.provider "virtualbox" do |vb|
+      vb.memory = 2048
+      vb.cpus = 2
+    end
+
+    rocky.vm.provision "shell", inline: <<-SHELL
+      set -e
+      set -x
+      localectl set-keymap it
+
+      id rocky9 &>/dev/null || useradd -m -s /bin/bash rocky9
+      echo "rocky9:rocky" | chpasswd
+      usermod -aG wheel rocky9
+      echo "rocky9 ALL=(ALL) NOPASSWD:ALL" | tee /etc/sudoers.d/rocky9
+
+      dnf install -y parted firewalld
+
+      systemctl enable --now firewalld
+
+      lsblk
+
+      DISK=$(lsblk -o NAME,SIZE,TYPE | grep -E 'disk.*1G' | awk '{print "/dev/"$1}')
+      [ -z "$DISK" ] && DISK=$(lsblk -o NAME,SIZE | grep '1G' | grep -v '└─' | awk '{print "/dev/"$1}')
+      [ -z "$DISK" ] && DISK="/dev/sdb"
+
+      echo "Tentativo di configurazione disco: $DISK"
+      lsblk
+
+      if [ -b "$DISK" ]; then
+        echo "Configurazione disco $DISK in corso..."
+        wipefs -a "$DISK"
+        parted -s "$DISK" mklabel gpt
+        parted -s "$DISK" mkpart primary ext4 0% 100%
+        PARTITION="${DISK}1"
+        mkfs.ext4 -F "$PARTITION"
+        mkdir -p /mnt/rocky_data
+        mount "$PARTITION" /mnt/rocky_data
+        grep -q "$PARTITION /mnt/rocky_data" /etc/fstab || echo "$PARTITION /mnt/rocky_data ext4 defaults 0 0" >> /etc/fstab
+      else
+        echo "Disco $DISK non trovato!"
+      fi
+
+      dnf update -y
+      dnf install -y httpd curl
+      echo "Hello DevOps!" > /var/www/html/index.html
+      chmod 664 /var/www/html/index.html
+      systemctl start httpd
+      systemctl enable httpd
+      firewall-cmd --add-service=http --permanent
+      firewall-cmd --reload
+      firewall-cmd --list-services
+      curl http://localhost
+      curl http://192.168.56.10
+    SHELL
+  end
+
+  # -------------------Configurazione Debian---------------------------------------------------------------
+
+  config.vm.define "debian" do |debian|
+    debian.vm.box = "debian/bullseye64"
+    debian.vm.hostname = "debian"
+    debian.vm.network "private_network", ip: "192.168.56.20"
+
+    # Disabilita cartella condivisa /vagrant
+    debian.vm.synced_folder ".", "/vagrant", disabled: true
+
+    debian.vm.disk :disk, name: "debian_data", size: "1GB", primary: false
+    
+    debian.vm.provider "virtualbox" do |vb|
+      vb.memory = 1024
+      vb.cpus = 1
+    end
+
+    debian.vm.provision "shell", inline: <<-SHELL
+      export DEBIAN_FRONTEND=noninteractive
+      sudo apt-get update -y
+      # sudo apt-get install -y console-setup   # <-- RIMUOVI o COMMENTA QUESTA RIGA
+      sudo sed -i 's/XKBLAYOUT=.*/XKBLAYOUT="it"/' /etc/default/keyboard
+      sudo setupcon
+
+      id debian &>/dev/null || sudo useradd -m -s /bin/bash debian
+      echo "debian:debian" | sudo chpasswd
+      sudo usermod -aG sudo debian
+      echo "debian ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/debian
+
+      DISK=$(lsblk -o NAME,SIZE,TYPE | grep -E 'disk.*1G' | awk '{print "/dev/"$1}')
+      [ -z "$DISK" ] && DISK=$(lsblk -o NAME,SIZE | grep '1G' | grep -v '└─' | awk '{print "/dev/"$1}')
+      [ -z "$DISK" ] && DISK="/dev/sdb"
+
+      sudo apt-get clean
+      sudo apt-get autoclean
+      sudo rm -rf /var/lib/apt/lists/* -vf
+      sudo apt-get update --fix-missing
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -y parted
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -y apache2 curl
+      echo "Hello DevOps!" | sudo tee /var/www/html/index.html
+      sudo chmod 664 /var/www/html/index.html
+      sudo systemctl start apache2
+      sudo systemctl enable apache2
+
+      echo "Tentativo di configurazione disco: $DISK"
+      lsblk
+
+      if [ -b "$DISK" ]; then
+        echo "Configurazione disco $DISK in corso..."
+        sudo wipefs -a "$DISK"
+        sudo parted -s "$DISK" mklabel gpt
+        sudo parted -s "$DISK" mkpart primary ext4 0% 100%
+        PARTITION="${DISK}1"
+        sudo mkfs.ext4 "$PARTITION"
+        sudo mkdir -p /mnt/debian_data
+        sudo mount "$PARTITION" /mnt/debian_data
+        grep -q "$PARTITION /mnt/debian_data" /etc/fstab || echo "$PARTITION /mnt/debian_data ext4 defaults 0 0" | sudo tee -a /etc/fstab
+      fi
+
+      sudo dpkg --configure -a
+      sudo apt-get update
+      sudo apt-get install -y curl
+      curl http://localhost
+      curl http://192.168.56.20
+    SHELL
+  end
+end

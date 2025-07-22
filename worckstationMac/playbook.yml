@@ -1,0 +1,144 @@
+---
+- name: playbook
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: Aggiorna la cache DNF
+      ansible.builtin.dnf:
+        update_cache: yes
+      when: ansible_os_family == "RedHat"
+
+    - name: Installa pacchetti necessari
+      ansible.builtin.dnf:
+        name:
+          - dnf-utils
+          - device-mapper-persistent-data
+          - lvm2
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Crea il gruppo 'docker' se non esiste
+      ansible.builtin.group:
+        name: docker
+        state: present
+
+    - name: Aggiungi chiave GPG Docker
+      ansible.builtin.rpm_key:
+        state: present
+        key: https://download.docker.com/linux/centos/gpg
+      when: ansible_os_family == "RedHat"
+
+    - name: Aggiungi il repository ufficiale Docker
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/centos/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+      when: ansible_os_family == "RedHat"
+
+    - name: Installa Docker Engine
+      ansible.builtin.dnf:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: latest
+        update_cache: yes
+      when: ansible_os_family == "RedHat"
+      register: risultato_installazione_docker
+
+    - name: Riavvia se Docker è stato installato
+      ansible.builtin.reboot:
+        reboot_timeout: 600
+      when: risultato_installazione_docker.changed
+
+    - name: Abilita e avvia il servizio Docker
+      ansible.builtin.systemd:
+        name: docker
+        enabled: yes
+        state: started
+
+    - name: Aggiungi utente 'vagrant' al gruppo 'docker'
+      ansible.builtin.user:
+        name: vagrant
+        groups: docker
+        append: yes
+      notify: Riavvia SSH
+
+    - name: Assicurati che firewalld sia in esecuzione e abilitato
+      ansible.builtin.systemd:
+        name: firewalld
+        state: started
+        enabled: yes
+
+    - name: Apri la porta 8080 di Jenkins nel firewall
+      ansible.posix.firewalld:
+        port: 8080/tcp
+        permanent: yes
+        state: enabled
+      notify: Ricarica firewalld
+
+    - name: Apri la porta 50000 di Jenkins nel firewall
+      ansible.posix.firewalld:
+        port: 50000/tcp
+        permanent: yes
+        state: enabled
+      notify: Ricarica firewalld
+
+    - name: Crea la directory home di Jenkins per la persistenza dei dati
+      ansible.builtin.file:
+        path: /var/jenkins_home
+        state: directory
+        mode: '0777'
+
+    - name: Avvia il container Jenkins Master
+      community.docker.docker_container:
+        name: jenkins-master
+        image: jenkins/jenkins:lts-jdk17
+        pull: yes
+        ports:
+            - "8080:8080"
+            - "50000:50000"
+        volumes:
+            - /var/jenkins_home:/var/jenkins_home
+            - /var/run/docker.sock:/var/run/docker.sock
+        restart_policy: always
+        state: started
+        hostname: jenkins-master
+
+    - name: Esegui un container 'hello-world' per testare Docker
+      community.docker.docker_container:
+          name: test-hello-world
+          image: hello-world:latest
+          state: started
+          auto_remove: yes
+        
+    - name: Avvia Jenkins Agent
+      community.docker.docker_container:
+        name: jenkins-agent
+        image: jenkins/inbound-agent
+        env:
+          JENKINS_URL: "http://192.168.56.10:8080"
+          JENKINS_SECRET: "589db22430b33bff5ceb80e29042e9e9f43ee9cf09b605f7836173e3c95fd572"
+          JENKINS_AGENT_NAME: "agent1"
+          JENKINS_WEB_SOCKET: "true"
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+        restart_policy: always
+        state: started
+
+
+  handlers:
+    - name: Riavvia SSH
+      ansible.builtin.systemd:
+        name: sshd
+        state: restarted
+      listen: "Riavvia SSH"
+
+    - name: Ricarica firewalld
+      ansible.builtin.systemd:
+        name: firewalld
+        state: reloaded
+      listen: "Ricarica firewalld"
