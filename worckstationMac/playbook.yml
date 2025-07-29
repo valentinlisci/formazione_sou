@@ -1,7 +1,6 @@
 ---
-- name: playbook
+- name: playbook (eseguito come root)
   hosts: all
-  become: yes
   gather_facts: yes
 
   tasks:
@@ -19,10 +18,13 @@
         state: present
       when: ansible_os_family == "RedHat"
 
-    - name: Crea il gruppo 'docker' se non esiste
-      ansible.builtin.group:
-        name: docker
-        state: present
+    - name: Crea directory per Jenkins agent persistente
+      ansible.builtin.file:
+        path: /home/vagrant/jenkins-agent
+        state: directory
+        owner: 1000
+        group: 1000
+        mode: '0777'
 
     - name: Aggiungi chiave GPG Docker
       ansible.builtin.rpm_key:
@@ -60,13 +62,6 @@
         enabled: yes
         state: started
 
-    - name: Aggiungi utente 'vagrant' al gruppo 'docker'
-      ansible.builtin.user:
-        name: vagrant
-        groups: docker
-        append: yes
-      notify: Riavvia SSH
-
     - name: Assicurati che firewalld sia in esecuzione e abilitato
       ansible.builtin.systemd:
         name: firewalld
@@ -92,6 +87,8 @@
         path: /var/jenkins_home
         state: directory
         mode: '0777'
+        owner: 1000
+        group: 1000
 
     - name: Avvia il container Jenkins Master
       community.docker.docker_container:
@@ -110,33 +107,34 @@
 
     - name: Esegui un container 'hello-world' per testare Docker
       community.docker.docker_container:
-          name: test-hello-world
-          image: hello-world:latest
-          state: started
-          auto_remove: yes
-        
+        name: test-hello-world
+        image: hello-world:latest
+        state: started
+        auto_remove: yes
+
     - name: Avvia Jenkins Agent
       community.docker.docker_container:
         name: jenkins-agent
         image: jenkins/inbound-agent
+        user: root
         env:
           JENKINS_URL: "http://192.168.56.10:8080"
-          JENKINS_SECRET: "589db22430b33bff5ceb80e29042e9e9f43ee9cf09b605f7836173e3c95fd572"
+          JENKINS_SECRET: "0089ccc1770795d59e560af640c75fe9af5b45e8ae1b853fb2dfd33fe7ff8fa7"
           JENKINS_AGENT_NAME: "agent1"
           JENKINS_WEB_SOCKET: "true"
         volumes:
           - /var/run/docker.sock:/var/run/docker.sock
-        restart_policy: always
+          - /usr/bin/docker:/usr/bin/docker  
+          - /home/vagrant/jenkins-agent:/home/jenkins/agent
         state: started
+        restart_policy: always
 
+    - name: Installa git (cache apt/dnf)
+      ansible.builtin.package:
+        name: git
+        state: present
 
   handlers:
-    - name: Riavvia SSH
-      ansible.builtin.systemd:
-        name: sshd
-        state: restarted
-      listen: "Riavvia SSH"
-
     - name: Ricarica firewalld
       ansible.builtin.systemd:
         name: firewalld

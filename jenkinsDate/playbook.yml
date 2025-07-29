@@ -1,0 +1,156 @@
+
+
+- name: Install community.docker collection se non presente (solo localhost)
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Installa la collection community.docker (se non presente)
+      ansible.builtin.command:
+        cmd: ansible-galaxy collection install community.docker --force
+      register: docker_collections_result
+      changed_when: "'was installed successfully' in docker_collections_result.stdout or 'already installed' in docker_collections_result.stdout"
+
+
+# ---------------------------------------------
+# Playbook principale
+# ---------------------------------------------
+
+- name: Setup Jenkins Master e Agent con Docker su Rocky Linux 9 + Clone repo Flask app + DockerHub credenziali
+  hosts: all
+  become: yes
+
+  vars:
+    jenkins_home: /var/jenkins_home
+    jenkins_image: jenkins/jenkins:lts
+    jenkins_agent_image: jenkins/agent
+    docker_users:
+      - vagrant
+      - user
+    repo_url: "https://github.com/valentinlisci/formazione_sou_k8s.git"
+    repo_dest: "/opt/formazione_sou_k8s"
+
+  pre_tasks:
+    - name: Aggiorna la cache dei pacchetti
+      dnf:
+        update_cache: yes
+
+  tasks:
+    - name: Installa pacchetti di base
+      dnf:
+        name:
+          - git
+          - python3
+          - python3-pip
+          - python3-setuptools
+          - python3-docker
+          - java-17-openjdk
+          - wget
+          - curl
+          - unzip
+          - yum-utils
+          - device-mapper-persistent-data
+          - lvm2
+        state: present
+
+    - name: Installa repository Docker (se non presente)
+      shell: |
+        dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo || true
+      args:
+        creates: /etc/yum.repos.d/docker-ce.repo
+
+    - name: Installa Docker Engine e plugin
+      dnf:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+
+    - name: Abilita e avvia Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Aggiungi utenti al gruppo docker
+      user:
+        name: "{{ item }}"
+        groups: docker
+        append: yes
+      loop: "{{ docker_users }}"
+      ignore_errors: yes
+
+    - name: Installa pip Docker library
+      pip:
+        name: docker
+        executable: pip3
+
+    - name: Crea la rete Docker per Jenkins
+      community.docker.docker_network:
+        name: jenkins-net
+
+    - name: Crea volume Docker per Jenkins (persistenza dati)
+      community.docker.docker_volume:
+        name: jenkins_home
+
+    - name: Crea la directory per Jenkins home (host)
+      file:
+        path: "{{ jenkins_home }}"
+        state: directory
+        owner: root
+        group: docker
+        mode: '0775'
+
+    - name: Avvia Jenkins Master (container)
+      community.docker.docker_container:
+        name: jenkins-master
+        image: "{{ jenkins_image }}"
+        state: started
+        restart_policy: always
+        networks:
+          - name: jenkins-net
+        published_ports:
+          - "8080:8080"
+        volumes:
+          - "{{ jenkins_home }}:/var/jenkins_home"
+          - /var/run/docker.sock:/var/run/docker.sock
+        user: root
+        env:
+          JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
+          JENKINS_OPTS: "--prefix=/"
+        command: ""
+
+    - name: Scarica l'immagine ufficiale Jenkins agent
+      community.docker.docker_image:
+        name: "{{ jenkins_agent_image }}"
+        source: pull
+
+    - name: Avvia Jenkins Agent (container "jnlp")
+      community.docker.docker_container:
+        name: jenkins-agent
+        image: "{{ jenkins_agent_image }}"
+        state: started
+        restart_policy: always
+        networks:
+          - name: jenkins-net
+        env:
+          JENKINS_URL: "http://jenkins-master:8080"
+          JENKINS_AGENT_NAME: "docker-agent"
+          JENKINS_SECRET: ""
+        command: "sleep infinity"
+
+    - name: Mostra lo stato dei container Jenkins
+      community.docker.docker_container_info:
+        name: "{{ item }}"
+      loop:
+        - jenkins-master
+        - jenkins-agent
+      register: jenkins_containers
+
+    - name: Mostra dettagli container Jenkins
+      debug:
+        msg: "{{ item.container }}"
+      loop: "{{ jenkins_containers.results }}"
