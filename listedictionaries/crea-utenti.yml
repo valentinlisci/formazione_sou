@@ -1,0 +1,31 @@
+---
+- name: Creazione utenti
+  hosts: localhost
+  become: yes
+
+  vars:
+    users:
+      - name: valentin
+        shell: /bin/bash
+        home: /home/valentin
+        group: dev
+      - name: paolo
+        shell: /bin/zsh
+        home: /home/paolo
+        group: ops
+
+  tasks:
+    - name: Crea i gruppi richiesti dagli utenti
+      ansible.builtin.group:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ users | map(attribute='group') | list | unique }}"
+
+    - name: Crea utenti dal dizionario
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        shell: "{{ item.shell }}"
+        home: "{{ item.home }}"
+        group: "{{ item.group }}"
+        state: present
+      loop: "{{ users }}"

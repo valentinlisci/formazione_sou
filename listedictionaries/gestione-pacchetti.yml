@@ -1,0 +1,17 @@
+---
+- name: Gestione pacchetti 
+  hosts: localhost
+  become: yes
+
+  vars:
+    pacchetti:
+      nano: present
+      httpd: absent
+      git: present
+
+  tasks:
+    - name: Installa o rimuovi pacchetti 
+      ansible.builtin.package:
+        name: "{{ item.0 }}"
+        state: "{{ item.1 }}"
+      loop: "{{ pacchetti.items() }}"
