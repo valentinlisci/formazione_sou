@@ -2,7 +2,7 @@
   hosts: all
   become: true
   vars:
-    env: production  # oppure dev o test
+    env: production  
     user: valentin
     whitelist_users:
       - valentin
