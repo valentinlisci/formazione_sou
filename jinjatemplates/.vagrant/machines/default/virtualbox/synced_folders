@@ -1,0 +1,1 @@
+{"rsync":{"/home/vagrant/configurazione_ansible":{"type":"rsync","rsync__auto":true,"guestpath":"/home/vagrant/configurazione_ansible","hostpath":"/Users/valentinlisci/Desktop/jinjatemplates/configurazione_ansible","disabled":false,"__vagrantfile":true,"auto":true,"owner":"vagrant","group":"vagrant"}}}

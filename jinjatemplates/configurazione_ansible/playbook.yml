@@ -1,0 +1,35 @@
+- name: Configura limiti e accessi
+  hosts: all
+  become: true
+  vars:
+    env: production  # oppure dev o test
+    user: valentin
+    whitelist_users:
+      - valentin
+      - paolo
+      - chiara
+
+  tasks:
+    - name: Genera blocco limits da template
+      template:
+        src: limits_block.j2
+        dest: /tmp/limits_block.txt
+
+    - name: Aggiungi blocco a /etc/security/limits.conf
+      blockinfile:
+        path: /etc/security/limits.conf
+        block: "{{ lookup('file', '/tmp/limits_block.txt') }}"
+        insertafter: EOF
+        create: yes
+
+    - name: Genera blocco access da template
+      template:
+        src: access_block.j2
+        dest: /tmp/access_block.txt
+
+    - name: Aggiungi utenti whitelist in /etc/security/access.conf
+      blockinfile:
+        path: /etc/security/access.conf
+        block: "{{ lookup('file', '/tmp/access_block.txt') }}"
+        insertbefore: '^- : ALL : ALL'
+        create: yes

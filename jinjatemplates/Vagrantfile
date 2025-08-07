@@ -1,0 +1,18 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "rockylinux/9"
+  config.vm.hostname = "ansible-vm"
+  config.vm.network "private_network", type: "dhcp"
+
+  # Disabilita la cartella condivisa /vagrant che causa l’errore
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  # Cartella condivisa rsync per il progetto
+  config.vm.synced_folder "./configurazione_ansible", "/home/vagrant/configurazione_ansible", type: "rsync", rsync__auto: true
+
+  config.vm.provision "shell", inline: <<-SHELL
+    dnf install -y epel-release
+    dnf install -y python3 python3-pip sudo
+    pip3 install --upgrade pip
+    pip3 install ansible
+  SHELL
+end

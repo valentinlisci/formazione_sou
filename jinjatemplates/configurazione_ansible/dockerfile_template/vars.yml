@@ -1,0 +1,5 @@
+base_image: python:3.10-slim
+workdir: /app
+build_command: pip install -r requirements.txt
+entrypoint_command: python app.py
+

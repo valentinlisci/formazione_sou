@@ -1,0 +1,3 @@
+# Impostazioni per utente {{ user }} in ambiente {{ env }}
+{{ user }}   soft    nofile    {% if env == "production" %}10000{% else %}1000{% endif %}
+{{ user }}   hard    nofile    {% if env == "production" %}10000{% else %}1000{% endif %}

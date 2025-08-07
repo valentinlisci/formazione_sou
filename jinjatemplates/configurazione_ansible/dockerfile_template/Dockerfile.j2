@@ -1,0 +1,11 @@
+FROM {{ base_image }}
+
+WORKDIR {{ workdir }}
+
+COPY . .
+
+RUN {{ build_command }}
+
+CMD ["{{ entrypoint_command }}"]
+
+

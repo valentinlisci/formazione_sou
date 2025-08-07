@@ -1,23 +1,66 @@
 ---
-- name: playbook (eseguito come root)
+- name: Provisioning workstation con strumenti DevOps e Jenkins
   hosts: all
-  gather_facts: yes
+  become: true
+  gather_facts: true
 
   tasks:
+    # Pacchetti di base
+    - name: Installa pacchetti di sistema
+      ansible.builtin.dnf:
+        name:
+          - curl
+          - tar
+          - git
+          - socat
+          - dnf-utils
+          - device-mapper-persistent-data
+          - lvm2
+        state: present
+        update_cache: true
+      when: ansible_os_family == "RedHat"
+
+    # Aggiorna cache DNF (già incluso sopra, ma lasciato per chiarezza)
     - name: Aggiorna la cache DNF
       ansible.builtin.dnf:
         update_cache: yes
       when: ansible_os_family == "RedHat"
 
-    - name: Installa pacchetti necessari
-      ansible.builtin.dnf:
-        name:
-          - dnf-utils
-          - device-mapper-persistent-data
-          - lvm2
-        state: present
-      when: ansible_os_family == "RedHat"
+    # Scarica kubectl
+    - name: Scarica kubectl
+      ansible.builtin.get_url:
+        url: "https://dl.k8s.io/release/v1.30.1/bin/linux/amd64/kubectl"
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
 
+    # Scarica kind
+    - name: Scarica kind
+      ansible.builtin.get_url:
+        url: https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
+        dest: /usr/local/bin/kind
+        mode: '0755'
+
+    # Scarica Helm
+    - name: Scarica Helm
+      ansible.builtin.get_url:
+        url: "https://get.helm.sh/helm-v3.14.3-linux-amd64.tar.gz"
+        dest: /tmp/helm-v3.14.3-linux-amd64.tar.gz
+        mode: '0644'
+
+    - name: Estrai Helm
+      ansible.builtin.unarchive:
+        src: /tmp/helm-v3.14.3-linux-amd64.tar.gz
+        dest: /tmp
+        remote_src: yes
+
+    - name: Copia binario helm in /usr/local/bin
+      ansible.builtin.copy:
+        remote_src: yes
+        src: /tmp/linux-amd64/helm
+        dest: /usr/local/bin/helm
+        mode: '0755'
+
+    # Jenkins agent workspace
     - name: Crea directory per Jenkins agent persistente
       ansible.builtin.file:
         path: /home/vagrant/jenkins-agent
@@ -26,6 +69,7 @@
         group: 1000
         mode: '0777'
 
+    # Docker setup
     - name: Aggiungi chiave GPG Docker
       ansible.builtin.rpm_key:
         state: present
@@ -62,6 +106,7 @@
         enabled: yes
         state: started
 
+    # Firewall per Jenkins
     - name: Assicurati che firewalld sia in esecuzione e abilitato
       ansible.builtin.systemd:
         name: firewalld
@@ -82,6 +127,7 @@
         state: enabled
       notify: Ricarica firewalld
 
+    # Jenkins home
     - name: Crea la directory home di Jenkins per la persistenza dei dati
       ansible.builtin.file:
         path: /var/jenkins_home
@@ -90,6 +136,7 @@
         owner: 1000
         group: 1000
 
+    # Jenkins master container
     - name: Avvia il container Jenkins Master
       community.docker.docker_container:
         name: jenkins-master
@@ -105,6 +152,7 @@
         state: started
         hostname: jenkins-master
 
+    # Test Docker
     - name: Esegui un container 'hello-world' per testare Docker
       community.docker.docker_container:
         name: test-hello-world
@@ -112,6 +160,7 @@
         state: started
         auto_remove: yes
 
+    # Jenkins agent container
     - name: Avvia Jenkins Agent
       community.docker.docker_container:
         name: jenkins-agent
@@ -119,7 +168,7 @@
         user: root
         env:
           JENKINS_URL: "http://192.168.56.10:8080"
-          JENKINS_SECRET: "0089ccc1770795d59e560af640c75fe9af5b45e8ae1b853fb2dfd33fe7ff8fa7"
+          JENKINS_SECRET: "81b93e3045fc6e22efacee1ac8736f8a43aaad452a5c931e4369ead79e54d165"
           JENKINS_AGENT_NAME: "agent1"
           JENKINS_WEB_SOCKET: "true"
         volumes:
@@ -129,10 +178,18 @@
         state: started
         restart_policy: always
 
+    # Git install
     - name: Installa git (cache apt/dnf)
       ansible.builtin.package:
         name: git
         state: present
+
+    - name: Aggiungi permessi all'utente vagrant per accedere al socket Docker
+      ansible.builtin.file:
+        path: /var/run/docker.sock
+        owner: root
+        group: vagrant
+        mode: '0660'
 
   handlers:
     - name: Ricarica firewalld
