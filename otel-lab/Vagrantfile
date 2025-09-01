@@ -4,7 +4,7 @@ Vagrant.configure("2") do |config|
   config.vm.hostname = "otel-vm"
 
   
-  config.vm.synced_folder "/Users/valentinlisci/Desktop/formazione_so/otel-lab",
+  config.vm.synced_folder "/Users/valentinlisci/Desktop/formazione_sou/otel-lab",
                           "/home/vagrant/otel-lab",
                           type: "virtualbox"
 

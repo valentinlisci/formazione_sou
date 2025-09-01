@@ -1,5 +1,5 @@
 ---
-- name: Setup otel-lab on Rocky 9 (using existing files)
+- name: otel-lab 
   hosts: all
   become: true
 
@@ -13,7 +13,7 @@
       - 3000   # grafana
 
   tasks:
-    - name: Ensure base packages
+    - name: pacchetti di base
       dnf:
         name:
           - podman
@@ -24,25 +24,25 @@
         state: present
         update_cache: true
 
-    - name: Set SELinux to permissive (runtime)
+    - name: SELinux (runtime)
       command: setenforce 0
       register: selinux_perm
       failed_when: selinux_perm.rc not in [0,1]
       changed_when: selinux_perm.rc == 0
 
-    - name: Set SELinux to permissive (persist)
+    - name: SELinux (persist)
       lineinfile:
         path: /etc/selinux/config
         regexp: '^SELINUX='
         line: 'SELINUX=permissive'
 
-    - name: Enable and start firewalld
+    - name: firewalld
       service:
         name: firewalld
         state: started
         enabled: true
 
-    - name: Open firewall ports
+    - name: firewall 
       firewalld:
         port: "{{ item }}/tcp"
         permanent: true
@@ -50,50 +50,21 @@
         immediate: true
       loop: "{{ open_ports }}"
 
-    - name: Install podman-compose via pip (system-wide)
+    - name: Installo podman-compose via pip 
       pip:
         name: podman-compose
         executable: pip3
 
-    # --- Rendi visibile podman-compose anche se pip lo installa in /usr/local/bin ---
-    - name: Check if /usr/local/bin/podman-compose exists
-      stat:
-        path: /usr/local/bin/podman-compose
-      register: pc_local
-
-    - name: Symlink podman-compose into /usr/bin (system PATH)
-      file:
-        src: /usr/local/bin/podman-compose
-        dest: /usr/bin/podman-compose
-        state: link
-      when: pc_local.stat.exists
-
-    # --- Verifica robusta: prova /usr/bin e /usr/local/bin ---
-    - name: Verify podman-compose is available
-      shell: |
-        if [ -x /usr/bin/podman-compose ]; then
-          /usr/bin/podman-compose --version
-        elif [ -x /usr/local/bin/podman-compose ]; then
-          /usr/local/bin/podman-compose --version
-        else
-          exit 3
-        fi
-      register: pc_ver
-      changed_when: false
-      failed_when: false
-
-    - name: Fail early if podman-compose is missing
-      fail:
-        msg: "podman-compose non trovato dopo l'installazione. Verifica pip3 e PATH (/usr/local/bin)."
-      when: pc_ver.rc != 0
-
-    # --- Messaggio finale: avvio manuale, come richiesto ---
-    - name: Next steps (manual start)
+    
+   
+    # -------------------------------------------------------------------------------
+    - name: ESEGUI
       debug:
         msg:
           - "Ambiente pronto. Avvio manuale dello stack:"
           - "1) vagrant ssh"
-          - "2) cd {{ compose_dir }}"
+          - "2) cd otel-lab/compose"
           - "3) sudo podman-compose build"
-          - "4) sudo podman-compose up -d"
-          - "Check: curl http://localhost:5000/ ; curl http://localhost:9464/metrics ; apri http://localhost:9090 e http://localhost:3000"
+          - "4) sudo podman-compose up -d
+                selezionare docker.io/prom/prometheus:v2.54.1"
+          - " curl http://localhost:5000/ ; curl http://localhost:9464/metrics ; apri http://localhost:9090 e http://localhost:3000"
