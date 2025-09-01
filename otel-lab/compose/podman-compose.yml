@@ -7,6 +7,11 @@ services:
     container_name: app-python
     ports:
       - "5000:5000"
+    environment:
+      - OTEL_SERVICE_NAME=app-python
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
     depends_on:
       - otel-collector
     networks: [otel_net]
@@ -47,13 +52,25 @@ services:
       - prometheus
       - tempo
     networks: [otel_net]
+    
+    services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: jaeger
+    command:
+      - "--collector.otlp.enabled=true"        
+    ports:
+      - "16686:16686"   # UI Jaeger
+    
+    networks: [otel_net]
+    restart: unless-stopped
 
   tempo:
     image: grafana/tempo:2.5.0
     container_name: tempo
     command: ["-config.file=/etc/tempo/tempo.yaml"]
     ports:
-      - "3100:3100"   # API Tempo (solo interno alla VM/compose)
+      - "3100:3100"   # API Tempo 
     volumes:
       - ../configs/tempo.yaml:/etc/tempo/tempo.yaml:Z
     networks: [otel_net]

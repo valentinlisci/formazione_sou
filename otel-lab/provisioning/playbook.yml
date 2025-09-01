@@ -11,6 +11,8 @@
       - 9464   # collector /metrics
       - 9090   # prometheus
       - 3000   # grafana
+      - 16686  # jaeger UI
+      - 3100   # tempo API
 
   tasks:
     - name: pacchetti di base
@@ -64,7 +66,7 @@
           - "Ambiente pronto. Avvio manuale dello stack:"
           - "1) vagrant ssh"
           - "2) cd otel-lab/compose"
-          - "3) sudo podman-compose build"
-          - "4) sudo podman-compose up -d
+          - "3) podman-compose build"
+          - "4) podman-compose up -d
                 selezionare docker.io/prom/prometheus:v2.54.1"
           - " curl http://localhost:5000/ ; curl http://localhost:9464/metrics ; apri http://localhost:9090 e http://localhost:3000"

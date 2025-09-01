@@ -9,3 +9,10 @@ datasources:
     type: tempo
     access: proxy
     url: http://tempo:3100
+  - name: Jaeger
+    type: jaeger
+    uid: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    basicAuth: false
+    editable: true

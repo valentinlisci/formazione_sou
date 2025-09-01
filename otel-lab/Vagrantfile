@@ -13,6 +13,8 @@ Vagrant.configure("2") do |config|
   config.vm.network "forwarded_port", guest: 9464, host: 9464   # Collector /metrics
   config.vm.network "forwarded_port", guest: 9090, host: 9090   # Prometheus
   config.vm.network "forwarded_port", guest: 3000, host: 3000   # Grafana
+  config.vm.network "forwarded_port", guest: 16686, host: 16686, auto_correct: true # Jaeger 
+
 
   config.vm.provider "virtualbox" do |vb|
     vb.name = "otel-lab-vm"
