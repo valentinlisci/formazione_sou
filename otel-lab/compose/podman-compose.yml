@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  app-python:
+    build:
+      context: ../app
+    container_name: app-python
+    ports:
+      - "5000:5000"
+    depends_on:
+      - otel-collector
+    networks: [otel_net]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.102.0
+    container_name: otel-collector
+    command: ["--config=/etc/otelcol/config.yaml"]
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "9464:9464"   # Prometheus exporter (Collector)
+    volumes:
+      - ../configs/otel-collector-config.yaml:/etc/otelcol/config.yaml:Z
+    networks: [otel_net]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: prometheus
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../configs/prometheus.yml:/etc/prometheus/prometheus.yml:Z
+    networks: [otel_net]
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "admin"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../grafana/provisioning/datasources/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:Z
+    depends_on:
+      - prometheus
+      - tempo
+    networks: [otel_net]
+
+  tempo:
+    image: grafana/tempo:2.5.0
+    container_name: tempo
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    ports:
+      - "3100:3100"   # API Tempo (solo interno alla VM/compose)
+    volumes:
+      - ../configs/tempo.yaml:/etc/tempo/tempo.yaml:Z
+    networks: [otel_net]
+
+networks:
+  otel_net:
