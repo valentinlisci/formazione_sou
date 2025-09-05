@@ -1,0 +1,17 @@
+# ---- File di sistema macOS ----
+.DS_Store
+
+# ---- Vagrant ----
+.vagrant/
+
+# ---- File temporanei Ansible ----
+*.retry
+
+# ---- File di configurazione locali ----
+cookies.txt
+private_key
+
+# ---- Backup e log ----
+*.log
+*.bak
+
