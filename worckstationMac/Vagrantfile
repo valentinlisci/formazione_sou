@@ -19,7 +19,7 @@ Vagrant.configure("2") do |config|
 
     # Esecuzione playbook (path assoluto)
     rocky.vm.provision "ansible" do |ansible|
-      ansible.playbook = "/Users/valentinlisci/Desktop/formazione_so/worckstationMac/playbook.yml"
+      ansible.playbook = "/Users/valentinlisci/Desktop/formazione_sou/worckstationMac/playbook.yml"
       ansible.become = true
       ansible.compatibility_mode = "2.0"
     end

@@ -1,0 +1,83 @@
+- name: Ottenere il crumb e salvare i cookie
+  shell: |
+    rm -f cookies.txt
+    curl -c cookies.txt -s -u {{ jenkins_user }}:{{ jenkins_password }} \
+    "{{ jenkins_url }}/crumbIssuer/api/json"
+  register: crumb_response
+
+- name: Estrai il crumb dalla risposta JSON
+  set_fact:
+    crumb_json: "{{ crumb_response.stdout | from_json }}"
+    
+- name: Estrai crumb e field name
+  set_fact:
+    jenkins_crumb: "{{ crumb_json.crumb }}"
+    crumb_field: "{{ crumb_json.crumbRequestField }}"
+
+- name: Generare nuovo API Token con curl
+  shell: |
+    curl -b cookies.txt -X POST -u valentin:valentin \
+    -H "Jenkins-Crumb: {{ jenkins_crumb }}" \
+    -d "newTokenName=my-new-token" \
+    http://192.168.56.10:8080/me/descriptorByName/jenkins.security.ApiTokenProperty/generateNewToken
+  register: token_response
+  failed_when: "'data' not in token_response.stdout"
+
+- name: Estrai il valore del token API
+  set_fact:
+    api_token: "{{ token_response.stdout | from_json | json_query('data.tokenValue') }}"
+
+- name: Creare nuovo agent node con curl
+  shell: |
+    curl -b cookies.txt -X POST -u {{ jenkins_user }}:{{ api_token }} \
+    -H "{{ crumb_field }}: {{ jenkins_crumb }}" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    --data-urlencode "name={{ agent_name }}" \
+    --data-urlencode "type=hudson.slaves.DumbSlave" \
+    --data-urlencode 'json={"name":"{{ agent_name }}","nodeDescription":"Ansible created agent","numExecutors":"1","remoteFS":"{{ agent_work_dir }}","labelString":"","mode":"EXCLUSIVE","":""}' \
+    --data-urlencode "Submit=OK" \
+    "{{ jenkins_url }}/computer/doCreateItem"
+
+- name: Attendere che il nodo sia creato
+  pause:
+    seconds: 3
+
+- name: Recuperare l'agent secret dal file JNLP
+  uri:
+    url: "{{ jenkins_url }}/computer/{{ agent_name }}/jenkins-agent.jnlp"
+    user: "{{ jenkins_user }}"
+    password: "{{ api_token }}"
+    method: GET
+    force_basic_auth: yes
+    return_content: yes
+  register: jnlp_response
+
+- name: Estrai il secret dal contenuto JNLP
+  set_fact:
+    agent_secret: "{{ jnlp_response.content | regex_search('<argument>([a-z0-9]{32,})</argument>', '\\1') | first }}"
+
+- name: Ferma container esistente se presente ({{ agent_container_name }})
+  community.docker.docker_container:
+    name: "{{ agent_container_name }}"
+    state: absent
+    force_kill: yes
+
+- name: Avviare il container Jenkins agent ({{ agent_container_name }})
+  community.docker.docker_container:
+    name: "{{ agent_container_name }}"
+    image: jenkins/inbound-agent
+    state: started
+    detach: yes
+    restart_policy: unless-stopped
+    command:
+      - -url
+      - "{{ jenkins_url }}"
+      - -name
+      - "{{ agent_name }}"
+      - -secret
+      - "{{ agent_secret }}"
+
+- name: Attendere che l'agent si connetta
+  pause:
+    seconds: 10
+

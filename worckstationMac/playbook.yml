@@ -4,6 +4,15 @@
   become: true
   gather_facts: true
 
+  vars:
+    jenkins_url: "http://192.168.56.10:8080"
+    jenkins_user: "valentin"
+    jenkins_password: "valentin"
+    agent_name: "my-agent"
+    agent_container_name: "nuovo-agent"
+    agent_work_dir: "/home/jenkins/agent"
+   
+
   tasks:
     # Pacchetti di base
     - name: Installa pacchetti di sistema
@@ -20,7 +29,10 @@
         update_cache: true
       when: ansible_os_family == "RedHat"
 
-    # Aggiorna cache DNF (già incluso sopra, ma lasciato per chiarezza)
+    - name: Configurazione Jenkins Agent tramite API
+      include_tasks: ../jenkins-api/jenkins_agent_config.yml
+
+    # Aggiorna cache DNF 
     - name: Aggiorna la cache DNF
       ansible.builtin.dnf:
         update_cache: yes
@@ -183,10 +195,10 @@
           JENKINS_URL: "http://172.18.0.10:8080"
           JENKINS_AGENT_NAME: "agent1"
           JENKINS_WEB_SOCKET: "true"
-          JENKINS_SECRET: "{{ lookup('env','JENKINS_AGENT_SECRET') }}"
+          JENKINS_SECRET: "d595a57c5927e8d4e85bc421de2e8620a290154d6f50b29c8e02c7121d095b2e"
         volumes:
           - /var/run/docker.sock:/var/run/docker.sock
-          - /usr/bin/docker:/usr/bin/docker  
+          
           - /home/vagrant/jenkins-agent:/home/jenkins/agent
         state: started
         restart_policy: always
@@ -196,6 +208,9 @@
       ansible.builtin.package:
         name: git
         state: present
+
+    - name: Configura Jenkins Agent via REST API
+      import_tasks: /Users/valentinlisci/Desktop/formazione_sou/jenkins-api/jenkins_agent_config.yml
 
     - name: Aggiungi permessi all'utente vagrant per accedere al socket Docker
       ansible.builtin.file:
