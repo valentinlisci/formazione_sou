@@ -1,4 +1,4 @@
-# Estrazione dei valori con `grep -P` utilizzando esclusivamente lookahead
+# Estrazione dei valori con `PERL` utilizzando esclusivamente lookahead
 
 ---
 
