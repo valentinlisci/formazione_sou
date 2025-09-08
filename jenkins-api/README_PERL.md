@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 # Estrazione di valori con `grep -P` utilizzando lookahead 
-=======
-# Estrazione dei valori con `PERL` utilizzando esclusivamente lookahead
->>>>>>> 4d0399f8824d3e58f197568c2071c05514fc446e
 
 ---
 
