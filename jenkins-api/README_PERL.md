@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # Estrazione di valori con `grep -P` utilizzando lookahead 
+=======
+# Estrazione dei valori con `PERL` utilizzando esclusivamente lookahead
+>>>>>>> 4d0399f8824d3e58f197568c2071c05514fc446e
 
 ---
 
@@ -19,7 +23,7 @@ grep -Po '(?<="crumb":")[a-z0-9]+(?=")' crumb.json
 ab12cd34ef56gh78
 ```
 
-**Spiegazione regex carattere per carattere:**
+**Spiegazione regex :**
 
 | Parte regex          | Significato                                                                 |
 |-----------------------|-----------------------------------------------------------------------------|
@@ -46,7 +50,7 @@ grep -Po '(?<="tokenValue":")[a-z0-9]+(?=")' token.json
 abcd1234efgh5678ijkl9012mnop3456
 ```
 
-**Spiegazione regex carattere per carattere:**
+**Spiegazione regex :**
 
 | Parte regex           | Significato                                                                 |
 |------------------------|-----------------------------------------------------------------------------|
@@ -78,7 +82,7 @@ grep -Po '(?<=<argument>)[a-z0-9]{32,}(?=</argument>)' jnlp.xml
 c9e256b7f0e6d44874d89c64143ef8cf6
 ```
 
-**Spiegazione regex carattere per carattere:**
+**Spiegazione regex :**
 
 | Parte regex            | Significato                                                                 |
 |-------------------------|-----------------------------------------------------------------------------|
