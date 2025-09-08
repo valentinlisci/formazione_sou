@@ -7,6 +7,8 @@ Vagrant.configure("2") do |config|
 
     # Cartella condivisa: tutto in /vagrant
     rocky.vm.synced_folder "/Users/valentinlisci/Desktop/formazione_sou_k8s", "/vagrant"
+    config.vm.synced_folder "./jenkins_data", "/opt/jenkins_home",
+  type: "nfs", nfs_version: 4, nfs_udp: false
 
     # Installazione Ansible e collezioni
     rocky.vm.provision "shell", inline: <<-SHELL
