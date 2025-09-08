@@ -1,4 +1,4 @@
-# Estrazione di valori con `grep -P` utilizzando esclusivamente lookahead
+# Estrazione di valori con `grep -P` utilizzando lookahead 
 
 ---
 
@@ -11,19 +11,19 @@
 
 **Comando:**
 ```bash
-grep -Po '"crumb":"[a-z0-9]+(?=")' crumb.json
+grep -Po '(?<="crumb":")[a-z0-9]+(?=")' crumb.json
 ```
 
 **Output atteso:**
 ```
-"crumb":"ab12cd34ef56gh78
+ab12cd34ef56gh78
 ```
 
 **Spiegazione regex carattere per carattere:**
 
 | Parte regex          | Significato                                                                 |
 |-----------------------|-----------------------------------------------------------------------------|
-| `"crumb":"`           | Inizio del match, include la chiave `crumb`.                               |
+| `(?<="crumb":")`      | Lookbehind positivo: matcha solo ciò che segue `crumb":"`.                  |
 | `[a-z0-9]+`           | Uno o più caratteri alfanumerici minuscoli (il valore del crumb).          |
 | `(?=")`               | Lookahead positivo: assicura che subito dopo ci sia `"` (fine valore JSON). |
 
@@ -38,19 +38,19 @@ grep -Po '"crumb":"[a-z0-9]+(?=")' crumb.json
 
 **Comando:**
 ```bash
-grep -Po '"tokenValue":"[a-z0-9]+(?=")' token.json
+grep -Po '(?<="tokenValue":")[a-z0-9]+(?=")' token.json
 ```
 
 **Output atteso:**
 ```
-"tokenValue":"abcd1234efgh5678ijkl9012mnop3456
+abcd1234efgh5678ijkl9012mnop3456
 ```
 
 **Spiegazione regex carattere per carattere:**
 
 | Parte regex           | Significato                                                                 |
 |------------------------|-----------------------------------------------------------------------------|
-| `"tokenValue":"`       | Inizio del match, include la chiave `tokenValue`.                          |
+| `(?<="tokenValue":")`  | Lookbehind positivo: matcha solo ciò che segue `tokenValue":"`.             |
 | `[a-z0-9]+`            | Matcha il valore del token (caratteri alfanumerici).                       |
 | `(?=")`                | Lookahead positivo: assicura che subito dopo ci sia `"` (fine valore JSON). |
 
@@ -70,19 +70,19 @@ grep -Po '"tokenValue":"[a-z0-9]+(?=")' token.json
 
 **Comando:**
 ```bash
-grep -Po '<argument>[a-z0-9]{32,}(?=</argument>)' jnlp.xml
+grep -Po '(?<=<argument>)[a-z0-9]{32,}(?=</argument>)' jnlp.xml
 ```
 
 **Output atteso:**
 ```
-<argument>c9e256b7f0e6d44874d89c64143ef8cf6
+c9e256b7f0e6d44874d89c64143ef8cf6
 ```
 
 **Spiegazione regex carattere per carattere:**
 
 | Parte regex            | Significato                                                                 |
 |-------------------------|-----------------------------------------------------------------------------|
-| `<argument>`            | Inizio del match, include il tag XML `<argument>`.                         |
+| `(?<=<argument>)`       | Lookbehind positivo: matcha solo ciò che segue `<argument>`.                |
 | `[a-z0-9]{32,}`         | Matcha almeno 32 caratteri alfanumerici (tipico secret Jenkins).           |
 | `(?=</argument>)`       | Lookahead positivo: assicura che il match sia seguito da `</argument>`.    |
 
