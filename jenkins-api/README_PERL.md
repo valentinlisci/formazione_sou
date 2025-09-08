@@ -19,7 +19,7 @@ grep -Po '"crumb":"[a-z0-9]+(?=")' crumb.json
 "crumb":"ab12cd34ef56gh78
 ```
 
-**Spiegazione regex carattere per carattere:**
+**Spiegazione regex :**
 
 | Parte regex          | Significato                                                                 |
 |-----------------------|-----------------------------------------------------------------------------|
@@ -46,7 +46,7 @@ grep -Po '"tokenValue":"[a-z0-9]+(?=")' token.json
 "tokenValue":"abcd1234efgh5678ijkl9012mnop3456
 ```
 
-**Spiegazione regex carattere per carattere:**
+**Spiegazione regex :**
 
 | Parte regex           | Significato                                                                 |
 |------------------------|-----------------------------------------------------------------------------|
@@ -78,7 +78,7 @@ grep -Po '<argument>[a-z0-9]{32,}(?=</argument>)' jnlp.xml
 <argument>c9e256b7f0e6d44874d89c64143ef8cf6
 ```
 
-**Spiegazione regex carattere per carattere:**
+**Spiegazione regex :**
 
 | Parte regex            | Significato                                                                 |
 |-------------------------|-----------------------------------------------------------------------------|
