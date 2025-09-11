@@ -1,0 +1,77 @@
+
+# Secret con credenziali Basic Auth
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nginx-basic-auth
+type: Opaque
+data:
+  auth: |
+    dXRlbnRpOiRhcHIxJHpoTFlYQi45JGdjaXlialZFT1lpUWlMNktBa3VjcS8K
+
+---
+# ConfigMap con configurazione Nginx
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  default.conf: |
+    server {
+        listen 80;
+
+        location / {
+            root /usr/share/nginx/html;
+            index index.html;
+            auth_basic "Restricted Content";
+            auth_basic_user_file /etc/nginx/auth/.htpasswd;
+        }
+    }
+
+---
+# Pod con Nginx protetto
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-auth-pod
+  labels:
+    app: nginx-auth
+spec:
+  containers:
+    - name: nginx
+      image: nginx:alpine
+      ports:
+        - containerPort: 80
+      volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+        - name: auth-volume
+          mountPath: /etc/nginx/auth
+  volumes:
+    - name: nginx-config
+      configMap:
+        name: nginx-config
+    - name: auth-volume
+      secret:
+        secretName: nginx-basic-auth
+        items:
+          - key: auth
+            path: .htpasswd
+
+---
+# LoadBalancer per esporre Nginx
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-auth-service
+spec:
+  selector:
+    app: nginx-auth
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer
